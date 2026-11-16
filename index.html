@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>my_dbms web</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #6b7280;
+    --border: #dfe3e8; --accent: #2563eb; --error: #b91c1c; --error-bg: #fef2f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1b1f27; --text: #e5e7eb; --muted: #9ca3af;
+      --border: #2c323d; --accent: #60a5fa; --error: #fca5a5; --error-bg: #2a1616;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  .app { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
+  aside { border-right: 1px solid var(--border); background: var(--panel); padding: 16px; overflow: auto; }
+  aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 8px; }
+  aside ul { list-style: none; padding: 0; margin: 0; }
+  aside li button { all: unset; cursor: pointer; display: block; width: 100%; padding: 4px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
+  aside li button:hover { background: var(--bg); }
+  main { display: flex; flex-direction: column; min-width: 0; }
+  .editor { padding: 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  textarea { width: 100%; height: 140px; resize: vertical; padding: 10px; font: 13px/1.5 ui-monospace, monospace;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
+  .bar { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .bar span { color: var(--muted); font-size: 12px; }
+  button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-weight: 600; }
+  button.ghost { background: none; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  #results { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .card .sql { padding: 6px 10px; font: 12px ui-monospace, monospace; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .card pre { margin: 0; padding: 10px; font: 13px/1.4 ui-monospace, monospace; overflow-x: auto; }
+  .card.error pre { color: var(--error); background: var(--error-bg); }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; height: auto; } aside { border-right: 0; border-bottom: 1px solid var(--border); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h2>Tabelas</h2>
+    <ul id="tables"></ul>
+  </aside>
+  <main>
+    <div class="editor">
+      <textarea id="sql" spellcheck="false" placeholder="Um comando por linha. Ctrl+Enter executa.">SELECT * FROM _tables;</textarea>
+      <div class="bar">
+        <button class="primary" id="run">Executar</button>
+        <button class="ghost" id="clear">Limpar resultados</button>
+        <span>Ctrl+Enter executa · linhas com -- são comentários</span>
+      </div>
+    </div>
+    <div id="results"></div>
+  </main>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function query(sql) {
+  const res = await fetch("/api/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sql }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function show(r) {
+  const card = document.createElement("div");
+  card.className = "card" + (r.error ? " error" : "");
+  const sql = document.createElement("div");
+  sql.className = "sql";
+  sql.textContent = r.sql;
+  const pre = document.createElement("pre");
+  pre.textContent = r.output;
+  card.append(sql, pre);
+  $("results").prepend(card);
+}
+
+// A lista de tabelas vem de "SELECT * FROM _tables": a primeira coluna
+// de cada linha, pulando cabeçalho, separador e rodapé.
+async function loadTables() {
+  const [r] = await query("SELECT name FROM _tables;");
+  const list = $("tables");
+  list.innerHTML = "";
+  if (!r || r.error) return;
+  const lines = r.output.split("\n").slice(2, -1);
+  for (const line of lines) {
+    const name = line.split("|")[0].trim();
+    if (!name) continue;
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.textContent = name;
+    btn.onclick = () => { $("sql").value = `SELECT * FROM ${name};`; run(); };
+    li.append(btn);
+    list.append(li);
+  }
+}
+
+async function run() {
+  const sql = $("sql").value;
+  try {
+    const results = await query(sql);
+    results.forEach(show);
+  } catch (e) {
+    show({ sql, output: String(e), error: true });
+  }
+  loadTables();
+}
+
+$("run").onclick = run;
+$("clear").onclick = () => { $("results").innerHTML = ""; };
+$("sql").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); }
+});
+loadTables();
+</script>
+</body>
+</html>
