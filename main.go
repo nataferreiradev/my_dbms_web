@@ -13,9 +13,11 @@ import (
 var static embed.FS
 
 type result struct {
-	SQL    string `json:"sql"`
-	Output string `json:"output"`
-	Error  bool   `json:"error"`
+	SQL     string      `json:"sql"`
+	Output  string      `json:"output"`
+	Error   bool        `json:"error"`
+	Columns []column    `json:"columns,omitempty"`
+	Rows    [][]*string `json:"rows,omitempty"`
 }
 
 func main() {
@@ -53,24 +55,24 @@ func runAll(addr, sql string) []result {
 			continue
 		}
 		if line == "exit" || line == "quit" {
-			results = append(results, result{line, "aqui não dá para sair: a conexão fecha sozinha", true})
+			results = append(results, result{SQL: line, Output: "aqui não dá para sair: a conexão fecha sozinha", Error: true})
 			continue
 		}
 		if c == nil {
 			var err error
 			if c, err = dial(addr); err != nil {
-				return append(results, result{line, err.Error(), true})
+				return append(results, result{SQL: line, Output: err.Error(), Error: true})
 			}
 			defer c.close()
 		}
 		resp, err := c.send(line)
 		switch {
 		case err != nil:
-			return append(results, result{line, err.Error(), true})
+			return append(results, result{SQL: line, Output: err.Error(), Error: true})
 		case resp.Error != "":
-			results = append(results, result{line, "erro: " + resp.Error, true})
+			results = append(results, result{SQL: line, Output: "erro: " + resp.Error, Error: true})
 		default:
-			results = append(results, result{line, resp.Output, false})
+			results = append(results, result{SQL: line, Output: resp.Output, Columns: resp.Columns, Rows: resp.Rows})
 		}
 	}
 	return results

@@ -12,9 +12,17 @@ import (
 const timeout = 30 * time.Second
 
 // response é o que o servidor do my_dbms devolve para cada linha.
+// Num SELECT, Columns e Rows trazem o resultado; NULL vem como nil.
 type response struct {
-	Output string `json:"output"`
-	Error  string `json:"error"`
+	Output  string      `json:"output"`
+	Error   string      `json:"error"`
+	Columns []column    `json:"columns"`
+	Rows    [][]*string `json:"rows"`
+}
+
+type column struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 // conn é uma conexão com o servidor do my_dbms (go run ./cmd/my_dbms -listen ...).

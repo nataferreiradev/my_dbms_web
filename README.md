@@ -28,4 +28,6 @@ Opções: `-addr` muda o endereço da interface e `-db` o do banco.
   são comentários.
 - `client.go`: o cliente do protocolo do my_dbms: uma linha de SQL vai e uma
   linha de JSON (`{"output": ...}` ou `{"error": ...}`) volta.
-- `index.html`: editor (Ctrl+Enter executa), resultados e lista de tabelas.
+- `index.html`: editor (Ctrl+Enter executa), lista de tabelas e resultados.
+  O SELECT vira uma tabela HTML montada a partir de `columns` e `rows`; os
+  outros comandos aparecem como texto.

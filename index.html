@@ -36,6 +36,15 @@
   .card .sql { padding: 6px 10px; font: 12px ui-monospace, monospace; color: var(--muted); border-bottom: 1px solid var(--border); }
   .card pre { margin: 0; padding: 10px; font: 13px/1.4 ui-monospace, monospace; overflow-x: auto; }
   .card.error pre { color: var(--error); background: var(--error-bg); }
+  .grid { overflow-x: auto; max-height: 420px; }
+  table { border-collapse: collapse; width: 100%; font: 13px/1.4 ui-monospace, monospace; }
+  th, td { padding: 5px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: pre; }
+  th { position: sticky; top: 0; background: var(--panel); font-weight: 600; }
+  th small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+  td.num, th.num { text-align: right; }
+  td.null { color: var(--muted); font-style: italic; }
+  tbody tr:hover { background: var(--bg); }
+  .count { padding: 6px 10px; font-size: 12px; color: var(--muted); }
   @media (max-width: 640px) { .app { grid-template-columns: 1fr; height: auto; } aside { border-right: 0; border-bottom: 1px solid var(--border); } }
 </style>
 </head>
@@ -76,23 +85,58 @@ function show(r) {
   const sql = document.createElement("div");
   sql.className = "sql";
   sql.textContent = r.sql;
-  const pre = document.createElement("pre");
-  pre.textContent = r.output;
-  card.append(sql, pre);
+  card.append(sql);
+  if (r.columns) {
+    card.append(grid(r.columns, r.rows || []));
+  } else {
+    const pre = document.createElement("pre");
+    pre.textContent = r.output;
+    card.append(pre);
+  }
   $("results").prepend(card);
 }
 
-// A lista de tabelas vem de "SELECT * FROM _tables": a primeira coluna
-// de cada linha, pulando cabeçalho, separador e rodapé.
+// grid monta a tabela HTML de um SELECT. INT fica à direita e NULL em itálico.
+function grid(columns, rows) {
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  const wrap = el("div", "grid");
+  const table = el("table");
+  const head = el("tr");
+  for (const c of columns) {
+    const th = el("th", c.type === "INT" ? "num" : "", c.name);
+    th.append(el("small", "", c.type));
+    head.append(th);
+  }
+  table.append(el("thead"));
+  table.tHead.append(head);
+  const body = el("tbody");
+  for (const row of rows) {
+    const tr = el("tr");
+    row.forEach((v, i) => {
+      if (v === null) tr.append(el("td", "null", "NULL"));
+      else tr.append(el("td", columns[i].type === "INT" ? "num" : "", v));
+    });
+    body.append(tr);
+  }
+  table.append(body);
+  wrap.append(table);
+  const frag = document.createDocumentFragment();
+  frag.append(wrap, el("div", "count", rows.length === 1 ? "1 linha" : `${rows.length} linhas`));
+  return frag;
+}
+
+// A lista de tabelas vem de "SELECT name FROM _tables".
 async function loadTables() {
   const [r] = await query("SELECT name FROM _tables;");
   const list = $("tables");
   list.innerHTML = "";
   if (!r || r.error) return;
-  const lines = r.output.split("\n").slice(2, -1);
-  for (const line of lines) {
-    const name = line.split("|")[0].trim();
-    if (!name) continue;
+  for (const [name] of r.rows || []) {
     const li = document.createElement("li");
     const btn = document.createElement("button");
     btn.textContent = name;
