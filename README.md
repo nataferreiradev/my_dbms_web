@@ -1,7 +1,18 @@
 # my_dbms_web
 
-Interface web para o [my_dbms](../my_dbms): um editor SQL no navegador que
-conversa com o servidor TCP do banco.
+Interface web para o [my_dbms](https://github.com/nataferreiradev/my_dbms):
+um editor SQL no navegador que conversa com o servidor TCP do banco.
+
+## Requisitos
+
+Go 1.23 ou mais novo e o my_dbms clonado ao lado desta pasta:
+
+```
+git clone https://github.com/nataferreiradev/my_dbms.git
+git clone https://github.com/nataferreiradev/my_dbms_web.git
+```
+
+A interface usa o servidor TCP do my_dbms (`-listen`).
 
 ## Como rodar
 
