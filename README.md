@@ -26,10 +26,24 @@ go run .   # em outro terminal
 ## Como funciona
 
 - `main.go`: serve a página e a rota `POST /api/query`. Cada requisição abre
-  a sua conexão com o banco e manda os comandos um por linha. Linhas com `--`
-  são comentários.
+  a sua conexão com o banco. Um comando vai até a linha que termina em `;`,
+  então pode ocupar várias linhas, e vai para o banco numa linha só. Linhas
+  com `--` são comentários.
 - `client.go`: o cliente do protocolo do my_dbms: uma linha de SQL vai e uma
   linha de JSON (`{"output": ...}` ou `{"error": ...}`) volta.
 - `index.html`: editor (Ctrl+Enter executa), lista de tabelas e resultados.
   O SELECT vira uma tabela HTML montada a partir de `columns` e `rows`; os
   outros comandos aparecem como texto.
+
+## Estrutura de uma tabela
+
+Clicar numa tabela na lateral mostra a estrutura dela, montada só com
+consultas às tabelas do sistema:
+
+- colunas, tipos e `NOT NULL`, de `_catalog`;
+- chaves primárias, `UNIQUE` e índices, com páginas e altura da B+tree, de
+  `_indexes`;
+- linhas, páginas e bytes, de `_tables`;
+- o DDL (`CREATE TABLE` e `CREATE INDEX`) que recria a tabela, para copiar.
+
+As tabelas do sistema ficam numa seção separada e mostram os dados direto.

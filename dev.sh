@@ -22,7 +22,7 @@ go build -o "$bin/web" .
 (cd "$DB_DIR" && exec "$bin/my_dbms" -listen "$DB_ADDR") &
 sleep 0.5
 if ! kill -0 $! 2>/dev/null; then
-	echo "o my_dbms não subiu: a porta $DB_ADDR já está em uso?" >&2
+	echo "o my_dbms não subiu: veja o erro acima" >&2
 	exit 1
 fi
 

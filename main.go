@@ -44,16 +44,33 @@ func main() {
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-// runAll abre uma conexão e manda cada linha não vazia, porque o my_dbms
-// entende um comando por linha. Linhas começadas com -- são comentários.
-func runAll(addr, sql string) []result {
-	results := []result{}
-	var c *conn
+// statements separa o texto do editor em comandos. Um comando vai até a
+// linha que termina em ";", então pode ocupar várias linhas; o my_dbms
+// recebe cada um numa linha só. Linhas começadas com -- são comentários.
+func statements(sql string) []string {
+	var stmts, parts []string
 	for _, line := range strings.Split(sql, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "--") {
 			continue
 		}
+		parts = append(parts, line)
+		if strings.HasSuffix(line, ";") {
+			stmts = append(stmts, strings.Join(parts, " "))
+			parts = nil
+		}
+	}
+	if len(parts) > 0 {
+		stmts = append(stmts, strings.Join(parts, " "))
+	}
+	return stmts
+}
+
+// runAll abre uma conexão e manda os comandos um por um.
+func runAll(addr, sql string) []result {
+	results := []result{}
+	var c *conn
+	for _, line := range statements(sql) {
 		if line == "exit" || line == "quit" {
 			results = append(results, result{SQL: line, Output: "aqui não dá para sair: a conexão fecha sozinha", Error: true})
 			continue

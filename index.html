@@ -8,11 +8,13 @@
   :root {
     --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #6b7280;
     --border: #dfe3e8; --accent: #2563eb; --error: #b91c1c; --error-bg: #fef2f2;
+    --pk: #b45309; --pk-bg: #fef3c7; --uq: #6d28d9; --uq-bg: #ede9fe; --ix: #047857; --ix-bg: #d1fae5;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #12151b; --panel: #1b1f27; --text: #e5e7eb; --muted: #9ca3af;
       --border: #2c323d; --accent: #60a5fa; --error: #fca5a5; --error-bg: #2a1616;
+      --pk: #fcd34d; --pk-bg: #3a2e12; --uq: #c4b5fd; --uq-bg: #2a2340; --ix: #6ee7b7; --ix-bg: #10302a;
     }
   }
   * { box-sizing: border-box; }
@@ -20,19 +22,23 @@
   .app { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
   aside { border-right: 1px solid var(--border); background: var(--panel); padding: 16px; overflow: auto; }
   aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 8px; }
+  aside h2:not(:first-child) { margin-top: 20px; }
   aside ul { list-style: none; padding: 0; margin: 0; }
-  aside li button { all: unset; cursor: pointer; display: block; width: 100%; padding: 4px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
+  aside li button { all: unset; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 4px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
   aside li button:hover { background: var(--bg); }
+  aside li small { color: var(--muted); }
+  aside .empty { color: var(--muted); font-size: 12px; padding: 4px 6px; }
   main { display: flex; flex-direction: column; min-width: 0; }
   .editor { padding: 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
   textarea { width: 100%; height: 140px; resize: vertical; padding: 10px; font: 13px/1.5 ui-monospace, monospace;
     background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
-  .bar { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .bar { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   .bar span { color: var(--muted); font-size: 12px; }
   button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-weight: 600; }
   button.ghost { background: none; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  button.small { padding: 3px 10px; font-size: 12px; }
   #results { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
   .card .sql { padding: 6px 10px; font: 12px ui-monospace, monospace; color: var(--muted); border-bottom: 1px solid var(--border); }
   .card pre { margin: 0; padding: 10px; font: 13px/1.4 ui-monospace, monospace; overflow-x: auto; }
   .card.error pre { color: var(--error); background: var(--error-bg); }
@@ -42,9 +48,19 @@
   th { position: sticky; top: 0; background: var(--panel); font-weight: 600; }
   th small { font-weight: 400; color: var(--muted); margin-left: 4px; }
   td.num, th.num { text-align: right; }
-  td.null { color: var(--muted); font-style: italic; }
+  td.null, td.muted { color: var(--muted); font-style: italic; }
   tbody tr:hover { background: var(--bg); }
   .count { padding: 6px 10px; font-size: 12px; color: var(--muted); }
+  /* Estrutura da tabela */
+  .head { display: flex; align-items: center; gap: 12px; padding: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .head h3 { margin: 0; font: 600 15px ui-monospace, monospace; }
+  .head .stats { color: var(--muted); font-size: 12px; flex: 1; }
+  .section { padding: 8px 10px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .badge { display: inline-block; font: 600 10px system-ui, sans-serif; padding: 1px 6px; border-radius: 99px; margin-right: 4px; }
+  .badge.primary_key { color: var(--pk); background: var(--pk-bg); }
+  .badge.unique { color: var(--uq); background: var(--uq-bg); }
+  .badge.index { color: var(--ix); background: var(--ix-bg); }
+  .card pre.ddl { border-top: 1px solid var(--border); background: var(--bg); white-space: pre-wrap; }
   @media (max-width: 640px) { .app { grid-template-columns: 1fr; height: auto; } aside { border-right: 0; border-bottom: 1px solid var(--border); } }
 </style>
 </head>
@@ -53,6 +69,8 @@
   <aside>
     <h2>Tabelas</h2>
     <ul id="tables"></ul>
+    <h2>Sistema</h2>
+    <ul id="system"></ul>
   </aside>
   <main>
     <div class="editor">
@@ -60,7 +78,7 @@
       <div class="bar">
         <button class="primary" id="run">Executar</button>
         <button class="ghost" id="clear">Limpar resultados</button>
-        <span>Ctrl+Enter executa · linhas com -- são comentários</span>
+        <span>Ctrl+Enter executa · um comando vai até o ; · linhas com -- são comentários · clique numa tabela para ver a estrutura</span>
       </div>
     </div>
     <div id="results"></div>
@@ -68,6 +86,11 @@
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
+
+// Tabelas do sistema: só leitura, clicar mostra os dados.
+const SYSTEM = ["_catalog", "_tables", "_indexes", "_settings"];
+
+const KIND = { primary_key: "PK", unique: "UNIQUE", index: "INDEX" };
 
 async function query(sql) {
   const res = await fetch("/api/query", {
@@ -79,31 +102,29 @@ async function query(sql) {
   return res.json();
 }
 
+// quote escreve um texto como literal SQL.
+const quote = (s) => "'" + s.replaceAll("'", "''") + "'";
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
 function show(r) {
-  const card = document.createElement("div");
-  card.className = "card" + (r.error ? " error" : "");
-  const sql = document.createElement("div");
-  sql.className = "sql";
-  sql.textContent = r.sql;
-  card.append(sql);
+  const card = el("div", "card" + (r.error ? " error" : ""));
+  card.append(el("div", "sql", r.sql));
   if (r.columns) {
     card.append(grid(r.columns, r.rows || []));
   } else {
-    const pre = document.createElement("pre");
-    pre.textContent = r.output;
-    card.append(pre);
+    card.append(el("pre", "", r.output));
   }
   $("results").prepend(card);
 }
 
 // grid monta a tabela HTML de um SELECT. INT fica à direita e NULL em itálico.
 function grid(columns, rows) {
-  const el = (tag, cls, text) => {
-    const e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
-  };
   const wrap = el("div", "grid");
   const table = el("table");
   const head = el("tr");
@@ -126,28 +147,175 @@ function grid(columns, rows) {
   table.append(body);
   wrap.append(table);
   const frag = document.createDocumentFragment();
-  frag.append(wrap, el("div", "count", rows.length === 1 ? "1 linha" : `${rows.length} linhas`));
+  frag.append(wrap, el("div", "count", plural(rows.length, "linha", "linhas")));
   return frag;
 }
 
-// A lista de tabelas vem de "SELECT name FROM _tables".
+// simpleTable monta uma tabela HTML a partir de cabeçalhos e células prontas
+// (texto ou elementos).
+function simpleTable(headers, rows) {
+  const wrap = el("div", "grid");
+  const table = el("table");
+  const head = el("tr");
+  for (const h of headers) head.append(el("th", h.num ? "num" : "", h.name ?? h));
+  table.append(el("thead"));
+  table.tHead.append(head);
+  const body = el("tbody");
+  for (const row of rows) {
+    const tr = el("tr");
+    row.forEach((cell, i) => {
+      const td = el("td", headers[i].num ? "num" : "");
+      if (cell instanceof Node) td.append(cell);
+      else if (cell == null || cell === "") { td.className = "muted"; td.textContent = "—"; }
+      else td.textContent = cell;
+      tr.append(td);
+    });
+    body.append(tr);
+  }
+  table.append(body);
+  wrap.append(table);
+  return wrap;
+}
+
+const plural = (n, one, many) => `${n} ${n == 1 ? one : many}`;
+
+function bytes(n) {
+  n = Number(n);
+  return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+}
+
+// parseColumns lê a definição do catálogo: "id INT NOT NULL,nome TEXT".
+function parseColumns(def) {
+  return def.split(",").map((part) => {
+    const [name, type, ...rest] = part.trim().split(/\s+/);
+    return { name, type, notNull: rest.join(" ") === "NOT NULL" };
+  });
+}
+
+// ddl reconstrói os comandos que criariam a tabela e os índices dela.
+function ddl(table, columns, indexes) {
+  const single = (kind) => new Set(indexes.filter((i) => i.type === kind && i.columns.length === 1).map((i) => i.columns[0]));
+  const pk = single("primary_key"), uq = single("unique");
+  // Coluna de chave primária já é NOT NULL: o banco põe isso sozinho.
+  const inPK = new Set(indexes.filter((i) => i.type === "primary_key").flatMap((i) => i.columns));
+  const items = columns.map((c) => {
+    let s = `${c.name} ${c.type}`;
+    if (pk.has(c.name)) s += " PRIMARY KEY";
+    else if (c.notNull && !inPK.has(c.name)) s += " NOT NULL";
+    if (uq.has(c.name)) s += " UNIQUE";
+    return s;
+  });
+  for (const i of indexes) {
+    if (i.columns.length > 1 && i.type === "primary_key") items.push(`PRIMARY KEY (${i.columns.join(", ")})`);
+    if (i.columns.length > 1 && i.type === "unique") items.push(`UNIQUE (${i.columns.join(", ")})`);
+  }
+  const lines = [`CREATE TABLE ${table} (\n  ${items.join(",\n  ")}\n);`];
+  for (const i of indexes) {
+    if (i.type === "index") lines.push(`CREATE INDEX ${i.name} ON ${table} (${i.columns.join(", ")});`);
+  }
+  return lines.join("\n");
+}
+
+// showStructure mostra as colunas, as chaves, os índices e o espaço em
+// disco da tabela, tudo lido das tabelas do sistema.
+async function showStructure(table) {
+  const [def, idx, stats] = await query([
+    `SELECT definition FROM _catalog WHERE type = 'table' AND name = ${quote(table)};`,
+    `SELECT name, type, columns, pages, height FROM _indexes WHERE table_name = ${quote(table)};`,
+    `SELECT rows, pages, bytes FROM _tables WHERE name = ${quote(table)};`,
+  ].join("\n"));
+
+  if (!def || def.error || !def.rows?.length) {
+    show({ sql: `estrutura de ${table}`, output: def?.output || `tabela ${table} não encontrada no catálogo`, error: true });
+    return;
+  }
+  const columns = parseColumns(def.rows[0][0]);
+  // Servidores sem _indexes (versões antigas) só não mostram os índices.
+  const indexes = (idx && !idx.error ? idx.rows || [] : []).map(([name, type, cols, pages, height]) =>
+    ({ name, type, columns: cols.split(","), pages, height }));
+
+  const card = el("div", "card");
+  const head = el("div", "head");
+  head.append(el("h3", "", table));
+  const st = stats?.rows?.[0];
+  head.append(el("span", "stats", st
+    ? `${plural(st[0], "linha", "linhas")} · ${plural(st[1], "página", "páginas")} · ${bytes(st[2])}`
+    : ""));
+  const data = el("button", "ghost small", "Ver dados");
+  data.onclick = () => runSQL(`SELECT * FROM ${table};`);
+  const edit = el("button", "ghost small", "Copiar DDL");
+  head.append(data, edit);
+  card.append(head);
+
+  card.append(el("div", "section", "Colunas"));
+  card.append(simpleTable(
+    [{ name: "#", num: true }, "coluna", "tipo", "nulo", "chaves e índices"],
+    columns.map((c, i) => {
+      const keys = el("span");
+      for (const ix of indexes.filter((x) => x.columns.includes(c.name))) {
+        const b = el("span", `badge ${ix.type}`, KIND[ix.type] || ix.type);
+        b.title = ix.name;
+        keys.append(b);
+      }
+      return [String(i + 1), c.name, c.type, c.notNull ? "NOT NULL" : "aceita NULL", keys];
+    }),
+  ));
+
+  card.append(el("div", "section", "Chaves e índices"));
+  if (indexes.length) {
+    card.append(simpleTable(
+      ["nome", "tipo", "colunas", { name: "páginas", num: true }, { name: "altura", num: true }],
+      indexes.map((i) => {
+        const b = el("span", `badge ${i.type}`, KIND[i.type] || i.type);
+        return [i.name, b, i.columns.join(", "), i.pages, i.height];
+      }),
+    ));
+  } else {
+    card.append(el("div", "count", "nenhum"));
+  }
+
+  card.append(el("div", "section", "DDL"));
+  const text = ddl(table, columns, indexes);
+  card.append(el("pre", "ddl", text));
+  edit.onclick = async () => {
+    try { await navigator.clipboard.writeText(text); edit.textContent = "Copiado"; }
+    catch { $("sql").value = text; edit.textContent = "Colado no editor"; }
+  };
+
+  $("results").prepend(card);
+}
+
+function sideItem(name, hint, onclick) {
+  const li = el("li");
+  const btn = el("button");
+  btn.append(el("span", "", name));
+  if (hint) btn.append(el("small", "", hint));
+  btn.onclick = onclick;
+  li.append(btn);
+  return li;
+}
+
+// A lista lateral vem do _tables: as tabelas do usuário com o número de
+// linhas. As do sistema são fixas.
 async function loadTables() {
-  const [r] = await query("SELECT name FROM _tables;");
+  const [r] = await query("SELECT name, rows FROM _tables;");
   const list = $("tables");
   list.innerHTML = "";
-  if (!r || r.error) return;
-  for (const [name] of r.rows || []) {
-    const li = document.createElement("li");
-    const btn = document.createElement("button");
-    btn.textContent = name;
-    btn.onclick = () => { $("sql").value = `SELECT * FROM ${name};`; run(); };
-    li.append(btn);
-    list.append(li);
+  const user = (r && !r.error ? r.rows || [] : []).filter(([name]) => !name.startsWith("_"));
+  if (!user.length) list.append(el("li", "empty", r?.error ? "sem conexão com o banco" : "nenhuma tabela ainda"));
+  for (const [name, rows] of user) {
+    list.append(sideItem(name, rows, () => showStructure(name)));
   }
 }
 
-async function run() {
-  const sql = $("sql").value;
+function loadSystem() {
+  const list = $("system");
+  for (const name of SYSTEM) {
+    list.append(sideItem(name, "", () => runSQL(`SELECT * FROM ${name};`)));
+  }
+}
+
+async function runSQL(sql) {
   try {
     const results = await query(sql);
     results.forEach(show);
@@ -157,11 +325,12 @@ async function run() {
   loadTables();
 }
 
-$("run").onclick = run;
+$("run").onclick = () => runSQL($("sql").value);
 $("clear").onclick = () => { $("results").innerHTML = ""; };
 $("sql").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); }
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSQL($("sql").value); }
 });
+loadSystem();
 loadTables();
 </script>
 </body>
