@@ -5,21 +5,23 @@ conversa com o servidor TCP do banco.
 
 ## Como rodar
 
-Em um terminal, o banco como servidor:
-
 ```
-cd ../my_dbms
-go run ./cmd/my_dbms -listen localhost:4321
-```
-
-Em outro, a interface:
-
-```
-go run .
+./dev.sh
 # abra http://localhost:8080
 ```
 
-Opções: `-addr` muda o endereço da interface e `-db` o do banco.
+O script compila e sobe o servidor do my_dbms (`../my_dbms`, porta 4321) e
+a interface, e o Ctrl+C derruba os dois. Se a porta do banco já estiver em
+uso, por exemplo por um servidor antigo esquecido, ele avisa em vez de a
+página falar com a versão velha. `DB_DIR`, `DB_ADDR` e `WEB_ADDR` mudam a
+pasta e os endereços.
+
+Para subir cada um à mão:
+
+```
+cd ../my_dbms && go run ./cmd/my_dbms -listen localhost:4321
+go run .   # em outro terminal
+```
 
 ## Como funciona
 
